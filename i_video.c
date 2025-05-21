@@ -89,7 +89,7 @@ int		doPointerWarp = POINTER_WARP_COUNTDOWN;
 // to use ....
 
 // ARMIN: 3 seems to be max. after that there are memory access issues
-static int	multiply=1; //static int	multiply=1;
+static int	multiply=3; //static int	multiply=1;
 
 
 //
