@@ -88,7 +88,7 @@ int		doPointerWarp = POINTER_WARP_COUNTDOWN;
 // According to Dave Taylor, it still is a bonehead thing
 // to use ....
 
-// ARMIN: 3 seems to be max. after that there are memory access issues
+// Armin: 3 seems to be max. after that there are memory access issues
 static int	multiply=3; //static int	multiply=1;
 
 
@@ -770,11 +770,12 @@ void I_InitGraphics(void)
 
     // use the default visual 
     X_screen = DefaultScreen(X_display);
-    if (!XMatchVisualInfo(X_display, X_screen, 8, PseudoColor, &X_visualinfo))
+	if (!XMatchVisualInfo(X_display, X_screen, 8, PseudoColor, &X_visualinfo))
 	I_Error("xdoom currently only supports 256-color PseudoColor screens");
     X_visual = X_visualinfo.visual;
 
     // check for the MITSHM extension
+	// ARMIN: checks if shared memory extension is available for the display.
     doShm = XShmQueryExtension(X_display);
 
     // even if it's available, make sure it's a local connection
@@ -821,7 +822,7 @@ void I_InitGraphics(void)
 	
     XInstallColormap(X_display, X_cmap);
     XDefineCursor(X_display, X_mainWindow,
-		  createnullcursor( X_display, X_mainWindow ) );
+	createnullcursor( X_display, X_mainWindow ) );
 
     // create the GC
     valuemask = GCGraphicsExposures;
