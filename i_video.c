@@ -419,68 +419,121 @@ void I_FinishUpdate (void)
 	}
 
     }
+	// ARMIN: 24-bit screen support implementation
+	else if (true) 
+	{
+		// ARMIN: 8 bit pixel comes in (framebuffer is of type byte*)
+		byte *ilineptr;
+		byte oneipixel;
+
+		// ARMIN: 32 bit pixel comes out (thats fine because ShmImage wants 24 bit depth)
+		unsigned int oneopixels[3];
+		unsigned int *olineptrs[3];
+
+		ilineptr = screens[0]; // ARMIN: 8-bit pixel by pixel
+		for (int i = 0; i < 3; i++) 
+			// ARMIN: offset here is very important, because of the offset I add every time a line is finished
+			olineptrs[i] = (unsigned int*) &image->data[i*image->bytes_per_line];
+
+		for (int y = 0; y < SCREENHEIGHT; y++) 
+		{
+			for (int x = 0; x < SCREENWIDTH; x++) 
+			{
+				// ARMIN: somehow turn 8-bit pixel into 32-bit
+				oneipixel = *ilineptr++;
+				
+				oneopixels[0] = (unsigned int) (oneipixel << 4) | ((oneipixel << 4) << 8) | ((oneipixel << 4) << 16);
+				oneopixels[1] = (unsigned int) (oneipixel << 4) | ((oneipixel << 4) << 8) | ((oneipixel << 4) << 16);
+				oneopixels[2] = (unsigned int) (oneipixel << 4) | ((oneipixel << 4) << 8) | ((oneipixel << 4) << 16);
+
+				*olineptrs[0]++ = oneopixels[2];
+				*olineptrs[1]++ = oneopixels[2];
+				*olineptrs[2]++ = oneopixels[2];
+
+				*olineptrs[0]++ = oneopixels[1];
+				*olineptrs[1]++ = oneopixels[1];
+				*olineptrs[2]++ = oneopixels[1];
+				
+				*olineptrs[0]++ = oneopixels[0];
+				*olineptrs[1]++ = oneopixels[0];
+				*olineptrs[2]++ = oneopixels[0];
+				
+			}
+			olineptrs[0] += image->bytes_per_line/2;
+			olineptrs[1] += image->bytes_per_line/2;
+			olineptrs[2] += image->bytes_per_line/2;
+		}
+
+	}
     else if (multiply == 3)
     {
-	unsigned int *olineptrs[3];
-	unsigned int *ilineptr;
-	int x, y, i;
-	unsigned int fouropixels[3];
-	unsigned int fouripixels;
+		unsigned int *olineptrs[3];
+		unsigned int *ilineptr;
+		int x, y, i;
+		unsigned int fouropixels[3];
+		unsigned int fouripixels;
 
-	ilineptr = (unsigned int *) (screens[0]);
-	for (i=0 ; i<3 ; i++)
-	    olineptrs[i] = (unsigned int *) &image->data[i*X_width];
+		// ARMIN: This (including while loop) probably creates 3x3 blocks of pixels
+		ilineptr = (unsigned int *) (screens[0]); // ARMIN: reading 32 bit (4 8-bit pixels)
+		for (i=0 ; i<3 ; i++)
+			olineptrs[i] = (unsigned int *) &image->data[i*X_width];
 
-	y = SCREENHEIGHT;
-	while (y--)
-	{
-	    x = SCREENWIDTH;
-	    do
-	    {
-		fouripixels = *ilineptr++;
-		fouropixels[0] = (fouripixels & 0xff000000)
-		    |	((fouripixels>>8) & 0xff0000)
-		    |	((fouripixels>>16) & 0xffff);
-		fouropixels[1] = ((fouripixels<<8) & 0xff000000)
-		    |	(fouripixels & 0xffff00)
-		    |	((fouripixels>>8) & 0xff);
-		fouropixels[2] = ((fouripixels<<16) & 0xffff0000)
-		    |	((fouripixels<<8) & 0xff00)
-		    |	(fouripixels & 0xff);
-#ifdef __BIG_ENDIAN__
-		*olineptrs[0]++ = fouropixels[0];
-		*olineptrs[1]++ = fouropixels[0];
-		*olineptrs[2]++ = fouropixels[0];
-		*olineptrs[0]++ = fouropixels[1];
-		*olineptrs[1]++ = fouropixels[1];
-		*olineptrs[2]++ = fouropixels[1];
-		*olineptrs[0]++ = fouropixels[2];
-		*olineptrs[1]++ = fouropixels[2];
-		*olineptrs[2]++ = fouropixels[2];
-#else
-		*olineptrs[0]++ = fouropixels[2];
-		*olineptrs[1]++ = fouropixels[2];
-		*olineptrs[2]++ = fouropixels[2];
-		*olineptrs[0]++ = fouropixels[1];
-		*olineptrs[1]++ = fouropixels[1];
-		*olineptrs[2]++ = fouropixels[1];
-		*olineptrs[0]++ = fouropixels[0];
-		*olineptrs[1]++ = fouropixels[0];
-		*olineptrs[2]++ = fouropixels[0];
-#endif
-	    } while (x-=4);
-	    olineptrs[0] += 2*X_width/4;
-	    olineptrs[1] += 2*X_width/4;
-	    olineptrs[2] += 2*X_width/4;
-	}
 
+		y = SCREENHEIGHT;
+		while (y--)
+		{
+			x = SCREENWIDTH;
+			do
+			{
+				fouripixels = *ilineptr++;
+
+				// ARMIN: shifts around colors to make things pretty
+				// could theoretically be reduced to fouropixels[0..2] = fouripixel;
+				fouropixels[0] = (fouripixels & 0xff000000)
+					|	((fouripixels>>8) & 0xff0000)
+					|	((fouripixels>>16) & 0xffff);
+				fouropixels[1] = ((fouripixels<<8) & 0xff000000)
+					|	(fouripixels & 0xffff00)
+					|	((fouripixels>>8) & 0xff);
+				fouropixels[2] = ((fouripixels<<16) & 0xffff0000)
+					|	((fouripixels<<8) & 0xff00)
+					|	(fouripixels & 0xff);
+	#ifdef __BIG_ENDIAN__
+				*olineptrs[0]++ = fouropixels[0];
+				*olineptrs[1]++ = fouropixels[0];
+				*olineptrs[2]++ = fouropixels[0];
+				*olineptrs[0]++ = fouropixels[1];
+				*olineptrs[1]++ = fouropixels[1];
+				*olineptrs[2]++ = fouropixels[1];
+				*olineptrs[0]++ = fouropixels[2];
+				*olineptrs[1]++ = fouropixels[2];
+				*olineptrs[2]++ = fouropixels[2];
+	#else
+				// ARMIN: This writes to image->data
+				*olineptrs[0]++ = fouropixels[2];
+				*olineptrs[1]++ = fouropixels[2];
+				*olineptrs[2]++ = fouropixels[2];
+				*olineptrs[0]++ = fouropixels[1];
+				*olineptrs[1]++ = fouropixels[1];
+				*olineptrs[2]++ = fouropixels[1];
+				*olineptrs[0]++ = fouropixels[0];
+				*olineptrs[1]++ = fouropixels[0];
+				*olineptrs[2]++ = fouropixels[0];
+	#endif
+			} while (x-=4);
+
+			olineptrs[0] += 2*X_width/4;
+			olineptrs[1] += 2*X_width/4;
+			olineptrs[2] += 2*X_width/4;
+		}
     }
     else if (multiply == 4)
     {
-	// Broken. Gotta fix this some day.
-	void Expand4(unsigned *, double *);
-  	Expand4 ((unsigned *)(screens[0]), (double *) (image->data));
+		// Broken. Gotta fix this some day.
+		void Expand4(unsigned *, double *);
+		Expand4 ((unsigned *)(screens[0]), (double *) (image->data));
     }
+	
 
     if (doShm)
     {
@@ -770,7 +823,7 @@ void I_InitGraphics(void)
 
     // use the default visual 
     X_screen = DefaultScreen(X_display);
-	if (!XMatchVisualInfo(X_display, X_screen, 8, PseudoColor, &X_visualinfo))
+	if (!XMatchVisualInfo(X_display, X_screen, 24, TrueColor, &X_visualinfo))
 	I_Error("xdoom currently only supports 256-color PseudoColor screens");
     X_visual = X_visualinfo.visual;
 
@@ -795,7 +848,7 @@ void I_InitGraphics(void)
 
     // create the colormap
     X_cmap = XCreateColormap(X_display, RootWindow(X_display,
-						   X_screen), X_visual, AllocAll);
+						   X_screen), X_visual, AllocNone);
 
     // setup attributes for main window
     attribmask = CWEventMask | CWColormap | CWBorderPixel;
@@ -814,7 +867,7 @@ void I_InitGraphics(void)
 					x, y,
 					X_width, X_height,
 					0, // borderwidth
-					8, // depth
+					24, // depth
 					InputOutput,
 					X_visual,
 					attribmask,
@@ -862,12 +915,16 @@ void I_InitGraphics(void)
 	// create the image
 	image = XShmCreateImage(	X_display,
 					X_visual,
-					8,
+					24,
 					ZPixmap,
 					0,
 					&X_shminfo,
 					X_width,
 					X_height );
+
+	printf("width = %d, height = %d, bytes_per_line = %d, bits_per_pixel = %d\n",
+       image->width, image->height, image->bytes_per_line, image->bits_per_pixel);
+
 
 	grabsharedmemory(image->bytes_per_line * image->height);
 
