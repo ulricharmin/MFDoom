@@ -56,6 +56,7 @@ int XShmGetEventBase( Display* dpy ); // problems with g++?
 #include "d_main.h"
 
 #include "doomdef.h"
+#include "z_zone.h"
 
 #define POINTER_WARP_COUNTDOWN	1
 
@@ -90,6 +91,9 @@ int		doPointerWarp = POINTER_WARP_COUNTDOWN;
 
 // Armin: 3 seems to be max. after that there are memory access issues
 static int	multiply=3; //static int	multiply=1;
+
+
+static XColor	colors[256];
 
 
 //
@@ -442,9 +446,15 @@ void I_FinishUpdate (void)
 				// ARMIN: somehow turn 8-bit pixel into 32-bit
 				oneipixel = *ilineptr++;
 				
-				oneopixels[0] = (unsigned int) (oneipixel << 4) | ((oneipixel << 4) << 8) | ((oneipixel << 4) << 16);
-				oneopixels[1] = (unsigned int) (oneipixel << 4) | ((oneipixel << 4) << 8) | ((oneipixel << 4) << 16);
-				oneopixels[2] = (unsigned int) (oneipixel << 4) | ((oneipixel << 4) << 8) | ((oneipixel << 4) << 16);
+				// ARMIN: colors in XColors are unsigned short (16 bit) but only 8bit are initialized in "UploadNewPalette()"
+				byte red = (byte) colors[oneipixel].red;
+				byte green = (byte) colors[oneipixel].green;
+				byte blue = (byte) colors[oneipixel].blue;
+				
+				// ARMIN: only use first 24 bits, as only 24 bits are used by the window and image
+				oneopixels[0] = (unsigned int) (red << 16) | (green << 8) | (blue);
+				oneopixels[1] = (unsigned int) (red << 16) | (green << 8) | (blue);
+				oneopixels[2] = (unsigned int) (red << 16) | (green << 8) | (blue);
 
 				*olineptrs[0]++ = oneopixels[2];
 				*olineptrs[1]++ = oneopixels[2];
@@ -588,7 +598,6 @@ void I_ReadScreen (byte* scr)
 //
 // Palette stuff.
 //
-static XColor	colors[256];
 
 void UploadNewPalette(Colormap cmap, byte *palette)
 {
@@ -600,7 +609,7 @@ void UploadNewPalette(Colormap cmap, byte *palette)
 #ifdef __cplusplus
     if (X_visualinfo.c_class == PseudoColor && X_visualinfo.depth == 8)
 #else
-    if (X_visualinfo.class == PseudoColor && X_visualinfo.depth == 8)
+    if (X_visualinfo.class == TrueColor && X_visualinfo.depth == 24)
 #endif
 	{
 	    // initialize the colormap
@@ -626,7 +635,9 @@ void UploadNewPalette(Colormap cmap, byte *palette)
 	    }
 
 	    // store the colors to the current colormap
-	    XStoreColors(X_display, cmap, colors, 256);
+		// ARMIN: No need to store in colormap. I just use the XColors array
+		// that gets initialized in this function.
+	    //XStoreColors(X_display, cmap, colors, 256);
 
 	}
 }
@@ -823,6 +834,7 @@ void I_InitGraphics(void)
 
     // use the default visual 
     X_screen = DefaultScreen(X_display);
+	// ARMIN: change class to TrueColor and depth to 24
 	if (!XMatchVisualInfo(X_display, X_screen, 24, TrueColor, &X_visualinfo))
 	I_Error("xdoom currently only supports 256-color PseudoColor screens");
     X_visual = X_visualinfo.visual;
