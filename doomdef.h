@@ -101,7 +101,7 @@ typedef enum
 //  scaling e.g. to 2. Drawing of status bar,
 //  menues etc. is tied to the scale implied
 //  by the graphics.
-#define	SCREEN_MUL		2
+#define	SCREEN_MUL		1
 #define	INV_ASPECT_RATIO	0.625 // 0.75, ideally
 
 // Defines suck. C sucks.

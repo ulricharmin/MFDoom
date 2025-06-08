@@ -889,6 +889,12 @@ void I_InitGraphics(void)
     XDefineCursor(X_display, X_mainWindow,
 	createnullcursor( X_display, X_mainWindow ) );
 
+	// ARMIN: puts window top lefts instead of top right
+	XSizeHints *hints = XAllocSizeHints();
+	hints->flags = USPosition | USSize;
+	XSetNormalHints(X_display, X_mainWindow, hints);
+	XFree(hints);
+
     // create the GC
     valuemask = GCGraphicsExposures;
     xgcvalues.graphics_exposures = False;
