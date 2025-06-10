@@ -279,7 +279,7 @@ typedef enum
 
 #define KEY_LALT	KEY_RALT
 
-// custom keys
+// ARMIN: custom keys
 #define KEY_W 0x77
 #define KEY_A 0x61
 #define KEY_S 0x73

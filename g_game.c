@@ -404,7 +404,8 @@ void G_BuildTiccmd (ticcmd_t* cmd)
 	} 
     } 
  
-    forward += mousey; 
+    // ARMIN: Disabled this, because who moves forward with the mouse?
+    //forward += mousey; 
     if (strafe) 
 	side += mousex*2; 
     else 

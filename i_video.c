@@ -250,17 +250,18 @@ void I_GetEvent(void)
       case MotionNotify:
 	event.type = ev_mouse;
 	event.data1 =
-	    (X_event.xmotion.state & Button1Mask)
-	    | (X_event.xmotion.state & Button2Mask ? 2 : 0)
-	    | (X_event.xmotion.state & Button3Mask ? 4 : 0);
+		(X_event.xmotion.state & Button1Mask)
+		| (X_event.xmotion.state & Button2Mask ? 2 : 0)
+		| (X_event.xmotion.state & Button3Mask ? 4 : 0);
 	event.data2 = (X_event.xmotion.x - lastmousex) << 2;
 	event.data3 = (lastmousey - X_event.xmotion.y) << 2;
-
-	if (event.data2 || event.data3)
-	{
+	  
+	  if (event.data2 || event.data3)
+	  {
+		fprintf(stderr, "Mouse move: dx=%d dy=%d\n", event.data2, event.data3);
 	    lastmousex = X_event.xmotion.x;
 	    lastmousey = X_event.xmotion.y;
-	    if (X_event.xmotion.x != X_width/2 &&
+	    if (X_event.xmotion.x != X_width/2 && 
 		X_event.xmotion.y != X_height/2)
 	    {
 		D_PostEvent(&event);
@@ -424,12 +425,12 @@ void I_FinishUpdate (void)
 
     }
 	// ARMIN: 24-bit screen support implementation
-	else if (true) 
+	else if (multiply == 3) 
 	{
 		// ARMIN: 8 bit pixel comes in (framebuffer is of type byte*)
 		byte *ilineptr;
 		byte oneipixel;
-
+		
 		// ARMIN: 32 bit pixel comes out (thats fine because ShmImage wants 24 bit depth)
 		unsigned int oneopixels[3];
 		unsigned int *olineptrs[3];
@@ -456,6 +457,19 @@ void I_FinishUpdate (void)
 				oneopixels[1] = (unsigned int) (red << 16) | (green << 8) | (blue);
 				oneopixels[2] = (unsigned int) (red << 16) | (green << 8) | (blue);
 
+#ifdef __BIG_ENDIAN__
+				*olineptrs[0]++ = oneopixels[0];
+				*olineptrs[1]++ = oneopixels[0];
+				*olineptrs[2]++ = oneopixels[0];
+
+				*olineptrs[0]++ = oneopixels[1];
+				*olineptrs[1]++ = oneopixels[1];
+				*olineptrs[2]++ = oneopixels[1];
+
+				*olineptrs[0]++ = oneopixels[2];
+				*olineptrs[1]++ = oneopixels[2];
+				*olineptrs[2]++ = oneopixels[2];
+#else
 				*olineptrs[0]++ = oneopixels[2];
 				*olineptrs[1]++ = oneopixels[2];
 				*olineptrs[2]++ = oneopixels[2];
@@ -467,6 +481,7 @@ void I_FinishUpdate (void)
 				*olineptrs[0]++ = oneopixels[0];
 				*olineptrs[1]++ = oneopixels[0];
 				*olineptrs[2]++ = oneopixels[0];
+#endif
 				
 			}
 			olineptrs[0] += image->bytes_per_line/2;
@@ -475,6 +490,84 @@ void I_FinishUpdate (void)
 		}
 
 	}
+	// ARMIN: Broken. Gotta fix this some day.
+	else if (multiply == 4) {
+		byte *ilineptr;
+		byte oneipixel;
+
+		unsigned int oneopixels[4];
+		unsigned int *olineptrs[4];
+
+		ilineptr = screens[0];
+		for (int i = 0; i < 4; i++) 
+			olineptrs[i] = (unsigned int*) &image->data[i*image->bytes_per_line];
+
+		for (int y = 0; y < SCREENHEIGHT; y++) 
+		{
+			for (int x = 0; x < SCREENWIDTH; x++) 
+			{
+				oneipixel = *ilineptr++;
+				
+				byte red = (byte) colors[oneipixel].red;
+				byte green = (byte) colors[oneipixel].green;
+				byte blue = (byte) colors[oneipixel].blue;
+				
+				oneopixels[0] = (unsigned int) (red << 16) | (green << 8) | (blue);
+				oneopixels[1] = (unsigned int) (red << 16) | (green << 8) | (blue);
+				oneopixels[2] = (unsigned int) (red << 16) | (green << 8) | (blue);
+				oneopixels[3] = (unsigned int) (red << 16) | (green << 8) | (blue);
+
+#ifdef __BIG_ENDIAN__
+				*olineptrs[0]++ = oneopixels[0];
+				*olineptrs[1]++ = oneopixels[0];
+				*olineptrs[2]++ = oneopixels[0];
+				*olineptrs[3]++ = oneopixels[0];
+
+				*olineptrs[0]++ = oneopixels[1];
+				*olineptrs[1]++ = oneopixels[1];
+				*olineptrs[2]++ = oneopixels[1];
+				*olineptrs[3]++ = oneopixels[1];
+
+				*olineptrs[0]++ = oneopixels[2];
+				*olineptrs[1]++ = oneopixels[2];
+				*olineptrs[2]++ = oneopixels[2];
+				*olineptrs[3]++ = oneopixels[2];
+
+				*olineptrs[0]++ = oneopixels[3];
+				*olineptrs[1]++ = oneopixels[3];
+				*olineptrs[2]++ = oneopixels[3];
+				*olineptrs[3]++ = oneopixels[3];
+#else
+				*olineptrs[0]++ = oneopixels[3];
+				*olineptrs[1]++ = oneopixels[3];
+				*olineptrs[2]++ = oneopixels[3];
+				*olineptrs[3]++ = oneopixels[3];
+
+				*olineptrs[0]++ = oneopixels[2];
+				*olineptrs[1]++ = oneopixels[2];
+				*olineptrs[2]++ = oneopixels[2];
+				*olineptrs[3]++ = oneopixels[2];
+
+				*olineptrs[0]++ = oneopixels[1];
+				*olineptrs[1]++ = oneopixels[1];
+				*olineptrs[2]++ = oneopixels[1];
+				*olineptrs[3]++ = oneopixels[1];
+				
+				*olineptrs[0]++ = oneopixels[0];
+				*olineptrs[1]++ = oneopixels[0];
+				*olineptrs[2]++ = oneopixels[0];
+				*olineptrs[3]++ = oneopixels[0];
+#endif
+				
+			}
+			olineptrs[0] += image->bytes_per_line/2;
+			olineptrs[1] += image->bytes_per_line/2;
+			olineptrs[2] += image->bytes_per_line/2;
+			olineptrs[3] += image->bytes_per_line/2;
+		}
+	}
+	
+	/* ARMIN: original implementation of 3x and 4x
     else if (multiply == 3)
     {
 		unsigned int *olineptrs[3];
@@ -537,13 +630,14 @@ void I_FinishUpdate (void)
 			olineptrs[2] += 2*X_width/4;
 		}
     }
-    else if (multiply == 4)
+    
+	else if (multiply == 4)
     {
 		// Broken. Gotta fix this some day.
 		void Expand4(unsigned *, double *);
 		Expand4 ((unsigned *)(screens[0]), (double *) (image->data));
     }
-	
+	*/
 
     if (doShm)
     {
