@@ -258,7 +258,8 @@ void I_GetEvent(void)
 	  
 	  if (event.data2 || event.data3)
 	  {
-		fprintf(stderr, "Mouse move: dx=%d dy=%d\n", event.data2, event.data3);
+		fprintf(stderr, "Mouse move: event.data2 (X)=%d event.data3 (Y)=%d\n", event.data2, event.data3);
+		fprintf(stderr, "Mouse move: X_event.xmotion.x (X)=%d X_event.xmotion.y (Y)=%d\n", X_event.xmotion.x, X_event.xmotion.y);
 	    lastmousex = X_event.xmotion.x;
 	    lastmousey = X_event.xmotion.y;
 	    if (X_event.xmotion.x != X_width/2 && 
@@ -327,17 +328,17 @@ void I_StartTic (void)
     //  loose input focus within X11.
     if (grabMouse)
     {
-	if (!--doPointerWarp)
-	{
-	    XWarpPointer( X_display,
-			  None,
-			  X_mainWindow,
-			  0, 0,
-			  0, 0,
-			  X_width/2, X_height/2);
+		if (!--doPointerWarp)
+		{
+			XWarpPointer( X_display,
+				  None,
+				  X_mainWindow,
+				  0, 0,
+				  0, 0,
+				  X_width/2, X_height/2);
 
-	    doPointerWarp = POINTER_WARP_COUNTDOWN;
-	}
+			doPointerWarp = POINTER_WARP_COUNTDOWN;
+		}
     }
 
     mousemoved = false;
