@@ -1,0 +1,6 @@
+{
+    "files.associations": {
+        "xinput2.h": "c",
+        "keysym.h": "c"
+    }
+}

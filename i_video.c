@@ -33,6 +33,14 @@ rcsid[] = "$Id: i_x.c,v 1.6 1997/02/03 22:45:10 b1 Exp $";
 #include <X11/Xutil.h>
 #include <X11/keysym.h>
 
+// ARMIN: switching from classic Xlib to Xinput2 (XI2 protocol) for input handeling
+// 	reason: get relative mouse movement instead of absolute.
+//			so no more need to warp the pointer back to the center,
+//			and hopefully less problems with the calculated motion deltas
+#include <X11/extensions/XInput2.h>
+
+/////////////////////////////////
+
 #include <X11/extensions/XShm.h>
 // Had to dig up XShm.c for this one.
 // It is in the libXext, but not in the XFree86 headers.
@@ -258,8 +266,8 @@ void I_GetEvent(void)
 	  
 	  if (event.data2 || event.data3)
 	  {
-		fprintf(stderr, "Mouse move: event.data2 (X)=%d event.data3 (Y)=%d\n", event.data2, event.data3);
-		fprintf(stderr, "Mouse move: X_event.xmotion.x (X)=%d X_event.xmotion.y (Y)=%d\n", X_event.xmotion.x, X_event.xmotion.y);
+		//fprintf(stderr, "Mouse move: event.data2 (X)=%d\n", event.data2);
+		//fprintf(stderr, "Mouse move: X_event.xmotion.x (X)=%d\n", X_event.xmotion.x);
 	    lastmousex = X_event.xmotion.x;
 	    lastmousey = X_event.xmotion.y;
 	    if (X_event.xmotion.x != X_width/2 && 
