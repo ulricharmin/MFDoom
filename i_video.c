@@ -113,7 +113,14 @@ int xlatekey(void)
 
     int rc;
 
-    switch(rc = XKeycodeToKeysym(X_display, X_event.xkey.keycode, 0))
+	XIRawEvent* d_ev = (XIRawEvent*) X_event.xcookie.data;
+	KeyCode keycode = d_ev->detail;
+
+	rc = XKeycodeToKeysym(X_display, keycode, 0);
+	//rc = XKeycodeToKeysym(X_display, X_event.xkey.keycode, 0);
+
+
+    switch(rc)
     {
       case XK_Left:	rc = KEY_LEFTARROW;	break;
       case XK_Right:	rc = KEY_RIGHTARROW;	break;
@@ -204,6 +211,191 @@ static int	lastmousex = 0;
 static int	lastmousey = 0;
 boolean		mousemoved = false;
 boolean		shmFinished;
+
+static int major_opcode, first_event, first_error;
+
+void I_InitXI() 
+{
+    XQueryExtension(X_display, "XInputExtension", &major_opcode, &first_event, &first_error);
+
+    unsigned char mask[XIMaskLen(XI_LASTEVENT)] = {0, };
+    XISetMask(mask, XI_RawMotion);
+	XISetMask(mask, XI_KeyPress);
+	XISetMask(mask, XI_KeyRelease);
+	XISetMask(mask, XI_ButtonPress);
+	XISetMask(mask, XI_ButtonRelease);
+	
+    XIEventMask event_mask;
+    event_mask.deviceid = XIAllDevices;
+    event_mask.mask_len = sizeof(mask);
+    event_mask.mask = mask;
+
+    XISelectEvents(X_display, DefaultRootWindow(X_display), &event_mask, 1);
+}
+
+void XI_GetEvent(void)
+{
+	event_t event;
+
+	XGenericEventCookie *cookie = &X_event.xcookie;
+
+    XNextEvent(X_display, &X_event);
+
+	if (X_event.type == GenericEvent &&
+    XGetEventData(X_display, cookie) &&
+    cookie->extension == major_opcode) 
+	{	
+		switch (cookie->evtype) 
+		{
+			case XI_KeyPress:
+				event.type = ev_keydown;
+				event.data1 = xlatekey();
+				D_PostEvent(&event);
+			break;
+
+			case XI_KeyRelease:
+				event.type = ev_keyup;
+				event.data1 = xlatekey();
+				D_PostEvent(&event);
+			break;
+
+			case XI_ButtonPress:
+				//printf("Button Press\n");
+				//XIDeviceEvent *d_ev = (XIDeviceEvent*) cookie->data;
+				event.type = ev_mouse;
+				// event.data1 =
+				// 	(X_event.xbutton.state & Button1Mask)
+				// 	| (X_event.xbutton.state & Button2Mask ? 2 : 0)
+				// 	| (X_event.xbutton.state & Button3Mask ? 4 : 0)
+				// 	| (X_event.xbutton.button == Button1)
+				// 	| (X_event.xbutton.button == Button2 ? 2 : 0)
+				// 	| (X_event.xbutton.button == Button3 ? 4 : 0);
+
+				event.data1 = 1;
+				event.data2 = event.data3 = 0;
+				D_PostEvent(&event);
+			break;
+
+			case XI_ButtonRelease:
+				//printf("Button Release\n");
+				event.type = ev_mouse;
+				// event.data1 =
+				// 	(X_event.xbutton.state & Button1Mask)
+				// 	| (X_event.xbutton.state & Button2Mask ? 2 : 0)
+				// 	| (X_event.xbutton.state & Button3Mask ? 4 : 0)
+				// 	| (X_event.xbutton.button == Button1)
+				// 	| (X_event.xbutton.button == Button2 ? 2 : 0)
+				// 	| (X_event.xbutton.button == Button3 ? 4 : 0);
+
+				event.data1 = 0;
+				event.data2 = event.data3 = 0;
+				D_PostEvent(&event);
+			break;
+
+			case XI_RawMotion:
+				XIRawEvent *d_ev = (XIRawEvent*) cookie->data;
+				int rel_x = (int) d_ev->raw_values[0];
+				int rel_y = (int) d_ev->raw_values[1];
+
+				event.type = ev_mouse;
+				event.data1 =
+				(X_event.xmotion.state & Button1Mask)
+				| (X_event.xmotion.state & Button2Mask ? 2 : 0)
+				| (X_event.xmotion.state & Button3Mask ? 4 : 0);
+				event.data2 = rel_x << 8;
+				event.data3 = (-1)*rel_y;
+
+				D_PostEvent(&event);
+
+			break;
+
+			default:
+				if (doShm && X_event.type == X_shmeventtype) {shmFinished = true; printf("shmFinished true");}
+			break;
+		}
+
+		XFreeEventData(X_display, cookie);
+	} else {
+		if (doShm && X_event.type == X_shmeventtype) shmFinished = true;
+	}
+/*
+	switch(X_event.type) 
+	{
+		case XI_KeyPress:
+			// event.type = ev_keydown;
+			// event.data1 = xlatekey();
+			// D_PostEvent(&event);
+		break;
+
+		case XI_KeyRelease:
+			// event.type = ev_keyup;
+			// event.data1 = xlatekey();
+			// D_PostEvent(&event);
+		break;
+
+		case XI_ButtonPress:
+			// event.type = ev_mouse;
+			// event.data1 =
+			// 	(X_event.xbutton.state & Button1Mask)
+			// 	| (X_event.xbutton.state & Button2Mask ? 2 : 0)
+			// 	| (X_event.xbutton.state & Button3Mask ? 4 : 0)
+			// 	| (X_event.xbutton.button == Button1)
+			// 	| (X_event.xbutton.button == Button2 ? 2 : 0)
+			// 	| (X_event.xbutton.button == Button3 ? 4 : 0);
+			// event.data2 = event.data3 = 0;
+			// D_PostEvent(&event);
+		break;
+
+		case XI_ButtonRelease:
+			// event.type = ev_mouse;
+			// event.data1 =
+			// 	(X_event.xbutton.state & Button1Mask)
+			// 	| (X_event.xbutton.state & Button2Mask ? 2 : 0)
+			// 	| (X_event.xbutton.state & Button3Mask ? 4 : 0);
+			// // suggest parentheses around arithmetic in operand of |
+			// event.data1 =
+			// 	event.data1
+			// 	^ (X_event.xbutton.button == Button1 ? 1 : 0)
+			// 	^ (X_event.xbutton.button == Button2 ? 2 : 0)
+			// 	^ (X_event.xbutton.button == Button3 ? 4 : 0);
+			// event.data2 = event.data3 = 0;
+			// D_PostEvent(&event);
+		break;
+	
+		// case XI_Motion:
+		// 	event.type = ev_mouse;
+		// 	event.data1 =
+		// 		(X_event.xmotion.state & Button1Mask)
+		// 		| (X_event.xmotion.state & Button2Mask ? 2 : 0)
+		// 		| (X_event.xmotion.state & Button3Mask ? 4 : 0);
+		// 	event.data2 = (X_event.xmotion.x - lastmousex) << 2;
+		// 	event.data3 = (lastmousey - X_event.xmotion.y) << 2;
+			
+		// 	if (event.data2 || event.data3)
+		// 	{
+		// 		fprintf(stderr, "Mouse move: event.data2 (X)=%d\n", event.data2);
+		// 		fprintf(stderr, "Mouse move: X_event.xmotion.x (X)=%d\n", X_event.xmotion.x);
+		// 		lastmousex = X_event.xmotion.x;
+		// 		lastmousey = X_event.xmotion.y;
+		// 		if (X_event.xmotion.x != X_width/2 && 
+		// 		X_event.xmotion.y != X_height/2)
+		// 		{
+		// 		D_PostEvent(&event);
+		// 		// fprintf(stderr, "m");
+		// 		mousemoved = false;
+		// 		} else
+		// 		{
+		// 		mousemoved = true;
+		// 		}
+		// 	}
+		// break;
+
+		default:
+			if (doShm && X_event.type == X_shmeventtype) shmFinished = true;
+		break;
+	}
+*/
+}
 
 void I_GetEvent(void)
 {
@@ -329,7 +521,7 @@ void I_StartTic (void)
 	return;
 
     while (XPending(X_display))
-	I_GetEvent();
+	XI_GetEvent();
 
     // Warp the pointer back to the middle of the window
     //  or it will wander off - that is, the game will
@@ -338,12 +530,12 @@ void I_StartTic (void)
     {
 		if (!--doPointerWarp)
 		{
-			XWarpPointer( X_display,
-				  None,
-				  X_mainWindow,
-				  0, 0,
-				  0, 0,
-				  X_width/2, X_height/2);
+			// XWarpPointer( X_display,
+			// 	  None,
+			// 	  X_mainWindow,
+			// 	  0, 0,
+			// 	  0, 0,
+			// 	  X_width/2, X_height/2);
 
 			doPointerWarp = POINTER_WARP_COUNTDOWN;
 		}
@@ -569,10 +761,10 @@ void I_FinishUpdate (void)
 #endif
 				
 			}
-			olineptrs[0] += image->bytes_per_line/2;
-			olineptrs[1] += image->bytes_per_line/2;
-			olineptrs[2] += image->bytes_per_line/2;
-			olineptrs[3] += image->bytes_per_line/2;
+			olineptrs[0] += image->bytes_per_line>>1;
+			olineptrs[1] += image->bytes_per_line>>1;
+			olineptrs[2] += image->bytes_per_line>>1;
+			olineptrs[3] += image->bytes_per_line>>1;
 		}
 	}
 	
@@ -665,7 +857,7 @@ void I_FinishUpdate (void)
 	shmFinished = false;
 	do
 	{
-	    I_GetEvent();
+	    XI_GetEvent();
 	} while (!shmFinished);
 
     }
@@ -1005,6 +1197,8 @@ void I_InitGraphics(void)
   			X_mainWindow,
   			valuemask,
   			&xgcvalues );
+
+	I_InitXI();
 
     // map the window
     XMapWindow(X_display, X_mainWindow);
