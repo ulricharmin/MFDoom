@@ -9,7 +9,7 @@
       "type": "cppdbg",
       "request": "launch",
       "program": "${workspaceFolder}/linux/linuxxdoom",
-      "args": [],
+      "args": ["-4"],
       "stopAtEntry": false,
       "cwd": "${workspaceFolder}",
       "environment": [],
